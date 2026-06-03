@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helping Hearts TN | Orphanage Connect</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --wine-red: #800020;
+            --gold: #D4AF37;
+            --brown: #3d2b1f;
+            --soft-cream: #fffaf0;
+            --white: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--soft-cream); color: var(--brown); overflow-x: hidden; }
+
+        /* --- NAVIGATION --- */
+        nav {
+            background-color: var(--wine-red);
+            padding: 1rem 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: sticky; top: 0; z-index: 1000;
+            display: none; 
+        }
+        .logo { color: var(--gold); font-size: 1.5rem; font-weight: bold; }
+        nav ul { display: flex; list-style: none; }
+        nav ul li { margin-left: 25px; color: var(--white); cursor: pointer; transition: 0.3s; }
+        nav ul li:hover { color: var(--gold); }
+
+        /* --- LOGIN PAGE --- */
+        #login-page {
+            height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(rgba(128, 0, 32, 0.7), rgba(61, 43, 31, 0.7)), url('https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+        }
+        .login-card {
+            background: var(--white); padding: 40px; border-radius: 20px;
+            width: 90%; max-width: 500px; border-top: 8px solid var(--gold);
+        }
+        .login-card h2 { color: var(--wine-red); text-align: center; margin-bottom: 20px; }
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        input, select, textarea { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ccc; border-radius: 8px; }
+
+        /* --- HOME PAGE --- */
+        .container { max-width: 1100px; margin: 2rem auto; padding: 0 20px; }
+        .orphanage-list { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 20px; margin-bottom: 30px; 
+        }
+        .org-box {
+            background: var(--white); padding: 25px; border-radius: 15px;
+            border-bottom: 4px solid var(--wine-red); box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: 0.3s; cursor: pointer; text-align: center;
+        }
+        .org-box:hover { transform: translateY(-5px); border-bottom-color: var(--gold); }
+
+        /* --- FLOATING ITEM TILES --- */
+        .needs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin: 25px 0; }
+        .need-item {
+            background: var(--white); padding: 15px; border-radius: 12px;
+            text-align: center; cursor: pointer; border: 2px solid transparent;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s;
+            animation: float 3s ease-in-out infinite;
+        }
+        .need-item.selected { background: var(--wine-red) !important; color: var(--gold) !important; border-color: var(--gold); animation: none; }
+        .need-item input { width: 60px; height: 30px; margin-top: 8px; font-size: 0.8rem; pointer-events: auto; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+        /* --- BUTTONS --- */
+        .btn {
+            background: var(--wine-red); color: var(--gold); border: none;
+            padding: 15px 25px; font-weight: bold; border-radius: 10px;
+            cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px;
+        }
+        .btn:hover { background: var(--brown); }
+        .active-logistics { background: var(--gold) !important; color: var(--wine-red) !important; border: 2px solid var(--wine-red) !important; }
+
+        #main-map, #detail-map { height: 450px; border-radius: 15px; border: 3px solid var(--gold); margin: 20px 0; }
+        #detail-map { height: 250px; margin-top: 0; }
+        
+        .card { background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .hidden { display: none; }
+
+        .success-page { text-align: center; padding: 60px; }
+        .success-page h1 { font-size: 5rem; color: var(--gold); }
+    </style>
+</head>
+<body>
+
+    <section id="login-page">
+        <div class="login-card">
+            <h2>User Registration</h2>
+            <input type="text" id="u-name" placeholder="Full Name">
+            <input type="email" id="u-email" placeholder="Email Address">
+            <textarea id="u-addr" placeholder="Your Address"></textarea>
+            <div class="grid-inputs">
+                <input type="number" id="u-age" placeholder="Age">
+                <select id="u-gender"><option>Female</option><option>Male</option><option>Other</option></select>
+            </div>
+            <input type="tel" id="u-phone" placeholder="Phone Number">
+            <button class="btn" onclick="login()">Enter Helping Hearts</button>
+        </div>
+    </section>
+
+    <nav id="navbar">
+        <div class="logo">HELPING HEARTS TN</div>
+        <ul>
+            <li onclick="resetToHome()">Home</li>
+            <li onclick="showPage('map-sec')">Map</li>
+            <li onclick="alert('Settings feature locked.')">Settings</li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <section id="home" class="hidden">
+            <h2 style="text-align:center; margin-bottom:20px;">Orphanages in Tamil Nadu</h2>
+            <div id="list" class="orphanage-list"></div>
+            <button id="more-btn" class="btn" style="background:var(--gold); color:var(--wine-red); width: 200px; margin: 0 auto; display: block;" onclick="loadMore()">Load More</button>
+            <button id="map-btn" class="btn hidden" onclick="showPage('map-sec')">Explore in Map</button>
+        </section>
+
+        <section id="map-sec" class="hidden">
+            <div class="card">
+                <h2>Tamil Nadu Map</h2>
+                <div id="main-map"></div>
+            </div>
+        </section>
+
+        <section id="donate" class="hidden">
+            <div id="detail-map"></div>
+            <div class="card">
+                <h2 id="target">What would you like to donate?</h2>
+                <div class="needs-grid" id="needs-container"></div>
+                <div id="other-input" class="hidden">
+                    <input type="text" id="custom-item" placeholder="Specify other item...">
+                </div>
+                <button class="btn" onclick="validateItems()">Go</button>
+            </div>
+
+            <div id="reason-sec" class="card hidden">
+                <h2>Occasion</h2>
+                <select id="oc-select" onchange="toggleOccasion()">
+                    <option value="none">Select Occasion</option>
+                    <option value="bday">Birthday</option>
+                    <option value="anniv">Anniversary</option>
+                    <option value="other">Other Reason</option>
+                </select>
+                <textarea id="oc-text" class="hidden" placeholder="Provide details..."></textarea>
+                <button class="btn" onclick="validateOccasion()">Next</button>
+            </div>
+
+            <div id="logistics" class="card hidden">
+                <h2>Delivery Method</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-drop" class="btn" onclick="handleLogistics('drop')">Drop Off (Self Visit)</button>
+                    <button id="btn-pick" class="btn" style="background:var(--brown)" onclick="handleLogistics('pick')">Request Pickup</button>
+                </div>
+                <div id="p-box" class="hidden"><textarea placeholder="Pickup address details..."></textarea></div>
+                <button id="final-submit" class="btn hidden" onclick="finalSubmitToBackend()">Confirm Donation</button>
+            </div>
+        </section>
+
+        <section id="success" class="hidden success-page">
+            <h1>♥</h1>
+            <h2>Thank You!</h2>
+            <button class="btn" style="max-width:250px" onclick="resetToHome()">Back to Home</button>
+        </section>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const itemNames = ["Soap", "Toothbrush", "Toothpaste", "Dresses (Women)", "Dresses (Men)", "Money", "Cosmetics", "Accessories", "Notebooks", "Toys", "Slippers", "Food/Snacks", "Pillows", "Bed", "Other"];
+        const orphanages = [
+            { name: "Sivananda Saraswathi Sevashram", city: "Chennai", lat: 12.8100, lng: 80.0300 },
+            { name: "Anandham Foundation", city: "Chennai", lat: 13.0500, lng: 80.2200 },
+            { name: "Avvai Ashram", city: "Tenkasi", lat: 8.7900, lng: 77.3500 },
+            { name: "Guild of Service", city: "Chennai", lat: 13.0700, lng: 80.2500 },
+            { name: "Claretian Mercy Home", city: "Madurai", lat: 9.9200, lng: 78.1100 },
+            { name: "Gandhigram Trust", city: "Dindigul", lat: 10.2800, lng: 77.9300 },
+            { name: "Don Bosco Anbu Illam", city: "Salem", lat: 11.6600, lng: 78.1600 },
+            { name: "Helping Hearts Home", city: "Coimbatore", lat: 11.0520, lng: 76.9310 },
+            { name: "Little Hearts", city: "Chengalpattu", lat: 12.6841, lng: 79.9836 }
+        ];
+
+        let count = 0, mainMap = null, detailMap = null;
+
+        function login() {
+            if(!document.getElementById('u-name').value) return alert("Enter your name!");
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('navbar').style.display = 'flex';
+            showPage('home');
+            loadMore();
+            genItems();
+        }
+
+        function genItems() {
+            const grid = document.getElementById('needs-container');
+            grid.innerHTML = "";
+            itemNames.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'need-item';
+                div.innerHTML = `<span>${name}</span><br><input type="number" placeholder="Qty">`;
+                
+                div.addEventListener('click', function(e) {
+                    // Prevent toggle if clicking specifically on the input number
+                    if(e.target.tagName === 'INPUT') return;
+                    
+                    this.classList.toggle('selected');
+                    if(name === "Other") {
+                        const otherInput = document.getElementById('other-input');
+                        this.classList.contains('selected') ? otherInput.classList.remove('hidden') : otherInput.classList.add('hidden');
+                    }
+                });
+                grid.appendChild(div);
+            });
+        }
+
+        function validateItems() {
+            // Find any div with class "selected"
+            const selectedBoxes = document.querySelectorAll('.need-item.selected');
+            if(selectedBoxes.length > 0) {
+                showSub('reason-sec');
+            } else {
+                alert("Please select at least one item by clicking the box!");
+            }
+        }
+
+        function validateOccasion() {
+            if(document.getElementById('oc-select').value === "none") return alert("Please select an occasion!");
+            showSub('logistics');
+        }
+
+        function loadMore() {
+            const list = document.getElementById('list');
+            const slice = orphanages.slice(count, count + 10);
+            slice.forEach(org => {
+                const b = document.createElement('div');
+                b.className = 'org-box';
+                b.innerHTML = `<h3>${org.name}</h3><p>${org.city}</p>`;
+                b.onclick = () => startDonation(org);
+                list.appendChild(b);
+            });
+            count += 10;
+        }
+
+        function showPage(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'map-sec') initMainMap();
+
+        }
+
+        function initMainMap() {
+            if(mainMap) return;
+            mainMap = L.map('main-map').setView([11.1271, 78.6569], 7);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mainMap);
+            orphanages.forEach(o => { L.marker([o.lat, o.lng]).addTo(mainMap).bindPopup(`<b>${o.name}</b><br><button onclick="startDonationByName('${o.name}')">Donate</button>`); });
+        }
+
+        function startDonationByName(name) { startDonation(orphanages.find(o => o.name === name)); }
+
+        function startDonation(org) {
+            document.getElementById('target').innerText = "Donating to: " + org.name;
+            showPage('donate');
+            if (detailMap) detailMap.remove();
+            detailMap = L.map('detail-map').setView([org.lat, org.lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMap);
+            L.marker([org.lat, org.lng]).addTo(detailMap).bindPopup(org.name).openPopup();
+        }
+
+        function showSub(id) { document.getElementById(id).classList.remove('hidden'); window.scrollTo(0, document.body.scrollHeight); }
+        function toggleOccasion() { document.getElementById('oc-text').classList.remove('hidden'); }
+
+        function handleLogistics(mode) {
+            document.getElementById('btn-drop').classList.remove('active-logistics');
+            document.getElementById('btn-pick').classList.remove('active-logistics');
+            document.getElementById('p-box').classList.add('hidden');
+            document.getElementById('final-submit').classList.remove('hidden');
+            
+            if(mode === 'pick') {
+                document.getElementById('btn-pick').classList.add('active-logistics');
+                document.getElementById('p-box').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-drop').classList.add('active-logistics');
+                alert("Kindly Welcome! Follow the map at the top.");
+            }
+        }
+
+        function resetToHome() {
+            // Clean up old inputs
+            document.getElementById('reason-sec').classList.add('hidden');
+            document.getElementById('logistics').classList.add('hidden');
+            document.getElementById('final-submit').classList.add('hidden');
+            document.getElementById('oc-text').classList.add('hidden');
+            document.getElementById('oc-select').value = "none";
+            showPage('home');
+        }
+        // --- DJANGO BACKEND INTEGRATION ---
+
+async function finalSubmitToBackend() {
+    // 1. Gather selected items and their quantities from the tiles
+    const selectedItems = {};
+    document.querySelectorAll('.need-item.selected').forEach(item => {
+        const name = item.querySelector('span').innerText;
+        // Gets the value from the small Qty input, defaults to 1 if empty
+        const qty = item.querySelector('input').value || 1;
+        selectedItems[name] = qty;
+    });
+
+    // 2. Prepare the data package (Matches your Django models)
+    const finalData = {
+        // Data from Login Page
+        name: document.getElementById('u-name').value,
+        email: document.getElementById('u-email').value,
+        address: document.getElementById('u-addr').value,
+        phone: document.getElementById('u-phone').value,
+        
+        // Data from Donation Flow
+        orphanage_name: document.getElementById('target').innerText.replace("Donating to: ", ""),
+        items: selectedItems,
+        occasion: document.getElementById('oc-select').value,
+        occasion_details: document.getElementById('oc-text').value,
+        
+        // Data from Logistics
+        delivery_mode: document.getElementById('btn-pick').classList.contains('active-logistics') ? 'Pickup' : 'Drop-off',
+        pickup_address: document.querySelector('#p-box textarea').value
+    };
+
+    // 3. POST to Django API
+    try {
+        const response = await fetch('/api/submit-donation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') // Required for Django Security
+            },
+            body: JSON.stringify(finalData)
+        });
+
+        const result = await response.json();
+        if (result.status === "success") {
+            // ONLY if database saves successfully, show the success page
+            showPage('success');
+        } else {
+            alert("Database Error: " + JSON.stringify(result.message));
+        }
+    } catch (error) {
+        console.error("Submission failed:", error);
+        alert("Server is not responding. Check your Django server.");
+    }
+}
+
+// Crucial helper to allow Django to accept the data
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+    </script>
+</body>
+</html>
